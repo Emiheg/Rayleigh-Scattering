@@ -37,6 +37,7 @@ class Sun:
 
     def set_color(self, color):
         self.color = np.clip(color, 0, 1)
+        self.outer_sun.set_facecolor(self.color)
 
 
     def calculate_sun_metrics(self):
@@ -61,7 +62,7 @@ class Sun:
         self.canvas_y = None
         self.line_pos = None
         if cross_product > 0 and 0 <= angle_deg <= degree:
-            self.canvas_y = 1.0 - (angle_deg / degree)  # Normalize to [0, 1] for canvas
+            self.canvas_y = 1.0 - (angle_deg / degree)
             highlight_index = int(np.clip(self.canvas_y * (self.line_segments - 1), 0, self.line_segments - 1))
             self.line_pos = self.sampling_line[highlight_index]  # get the corresponding line point for highlighting
 

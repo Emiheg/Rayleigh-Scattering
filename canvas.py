@@ -123,44 +123,44 @@ class ColorCanvas:
         self.line_color = line_color
         self.num_points = cfg.NUM_RAYS
 
-    
+    def draw_preview(self, ax, colors, title, sun_metrics=None, sun_draw_color=cfg.SUN_COLOR):
+        width, height = 1000, 500
+        ax.clear()
+        ax.set_facecolor(self.background_color)
+        ax.set_title(title, color=self.line_color, fontsize=10)
+        ax.set_xlim(0, width)
+        ax.set_ylim(0, height)
+        ax.set_aspect('equal', adjustable='box')
 
+        if colors:
+            color_array = np.array(colors)
+            img_data = np.repeat(
+                color_array.reshape((len(color_array), 1, 3)),
+                cfg.GRADIENT_WIDTH_MULTIPLIER,
+                axis=1,
+            )
+            ax.imshow(
+                img_data,
+                aspect='equal',
+                extent=[0, width, 0, height],
+                origin='lower',
+                interpolation='bilinear',
+                animated=True,
+            )
+
+        if sun_metrics is not None:
+            y_coord = sun_metrics * height
+            display_color = np.clip(sun_draw_color, 0, 1)
+            sun_on_canvas = Circle((width * 0.5, y_coord), radius=10, color=display_color, zorder=10)
+            ax.add_patch(sun_on_canvas)
+
+        ax.axis('off')
 
     def update_canvases(self, scattered_colors, transmitted_colors, blended_colors, sun_metrics=None, sun_draw_color=cfg.SUN_COLOR):
         """Update canvases and draw a circular sun."""
         titles = {'scattered':'Scattered', 'transmitted':'Transmitted', 'blended':'Blended'}
         colors_map = {'scattered': scattered_colors, 'transmitted': transmitted_colors, 'blended': blended_colors}
 
-        width, height = 1000, 500
-
         for key, ax in self.axes.items():
-            ax.clear()
-            ax.set_facecolor(self.background_color)
-            ax.set_title(titles[key], color=self.line_color, fontsize=10)
-            ax.set_xlim(0, width); ax.set_ylim(0, height)
-            
-            if key == 'blended':
-                ax.set_aspect('equal', adjustable='box')
-
-
-            colors = colors_map[key]
-            if colors:
-
-                color_array = np.array(colors)          # Reshape the list of blended colors into a 2D array for imshow
-                img_data = color_array.reshape((len(color_array), 1, 3)) # Reshape to (num_colors, 1, 3) for imshow
-
-                img = ax.imshow(img_data, 
-                                aspect='equal', 
-                                extent=[0, width, 0, height], 
-                                origin='lower',
-                                animated=True)
-
-
-
-            if sun_metrics is not None:
-                y_coord = sun_metrics * height
-                display_color = np.clip(sun_draw_color, 0, 1)
-                sun_on_canvas = Circle((width * 0.5, y_coord), radius=10, color=display_color, zorder=10)
-                ax.add_patch(sun_on_canvas)
-
-            ax.axis('off') # Turn axis off at the end
+            metrics = sun_metrics if key == 'blended' else None
+            self.draw_preview(ax, colors_map[key], titles[key], metrics, sun_draw_color)
