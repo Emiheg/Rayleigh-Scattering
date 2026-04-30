@@ -9,9 +9,10 @@ ATMOSPHERE_RADIUS = 10
 SUN_DISTANCE = 15
 SUN_RADIUS = 2
 
-NUM_SEGMENTS = 25   # The resolution of the simulation along the ray path
+NUM_SEGMENTS = 40   # The resolution of the simulation along the ray path
 NUM_RAYS = 10      # Number of rays to simulate across the sun - for preview purposes only, not used on canvas
-NUM_LINE_POINTS = 50  # Number of points to sample along the line for color sampling
+NUM_LINE_POINTS = 300  # Number of points to sample along the line for color sampling
+GRADIENT_WIDTH_MULTIPLIER = 250  # Repeats each sampled color horizontally for smoother gradients
 
 SEGMENT_LENGTH = (ATMOSPHERE_RADIUS*2) / NUM_SEGMENTS
 
