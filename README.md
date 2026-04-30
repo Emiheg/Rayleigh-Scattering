@@ -10,6 +10,7 @@ The app uses Matplotlib sliders to adjust the sun position, atmosphere parameter
 
 <img width="288" height="162" alt="sunset_01 (1)" src="https://github.com/user-attachments/assets/d98a49f9-8d90-43e4-9628-4d6faa9afcaf" />
 
+<img width="288" height="162" alt="image" src="https://github.com/user-attachments/assets/31e4d41e-acc1-48a8-81da-c05a601c90d4" />
 
 
 
