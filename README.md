@@ -6,7 +6,7 @@ The app uses Matplotlib sliders to adjust the sun position, atmosphere parameter
 
 <img width="288" height="162" alt="Untitled" src="https://github.com/user-attachments/assets/d4cd7f55-112b-4b24-9d85-a19186625d06" />
 
-<img width="400" height="250" alt="Adobe Express - sunrise" src="https://github.com/user-attachments/assets/204ac108-fd1e-446e-bc58-006799355b15" />
+<img width="300" height="200" alt="Adobe Express - sunrise" src="https://github.com/user-attachments/assets/204ac108-fd1e-446e-bc58-006799355b15" />
 
 <img width="288" height="162" alt="sunset_01 (1)" src="https://github.com/user-attachments/assets/d98a49f9-8d90-43e4-9628-4d6faa9afcaf" />
 
