@@ -3,6 +3,10 @@
 Main script to run the atmospheric scattering simulation.
 This version keeps previews, controls, and generated animation in one window.
 """
+from pathlib import Path
+import tkinter as tk
+from tkinter import filedialog
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
@@ -36,12 +40,11 @@ from style import (
     add_slider_group,
     apply_panel_facecolors,
     build_layout,
-    create_button_axis,
     create_figure,
     style_scene_axis,
     style_video_axis,
 )
-from video import create_video
+from video import create_video, get_centered_image_extent, load_grayscale_alpha_map
 
 fig = create_figure()
 axes = build_layout(fig)
@@ -84,13 +87,41 @@ sun_after.outer_sun.set_zorder(6)
 color_canvas = ColorCanvas(ax_preview_before, ax_preview_after, ax_video, BACKGROUND_COLOR, TEXT_COLOR)
 ray_plots = []
 current_animation = None
+selected_image_path = None
 widget_axes = []
 widget_texts = []
-
-
 ax_animation_controls.set_facecolor(PANEL_COLOR)
-animation_button_ax = create_button_axis(fig, ax_animation_controls)
+animation_bbox = ax_animation_controls.get_position()
+image_button_ax = fig.add_axes(
+    [
+        animation_bbox.x0 + animation_bbox.width * 0.04,
+        animation_bbox.y0 + animation_bbox.height * 0.17,
+        animation_bbox.width * 0.43,
+        animation_bbox.height * 0.16,
+    ],
+    zorder=20,
+)
+animation_button_ax = fig.add_axes(
+    [
+        animation_bbox.x0 + animation_bbox.width * 0.51,
+        animation_bbox.y0 + animation_bbox.height * 0.17,
+        animation_bbox.width * 0.45,
+        animation_bbox.height * 0.16,
+    ],
+    zorder=20,
+)
+image_status_text = fig.text(
+    animation_bbox.x0 + animation_bbox.width * 0.04,
+    animation_bbox.y0 + animation_bbox.height * 0.05,
+    "No image selected",
+    color=TEXT_COLOR,
+    fontsize=9,
+    ha="left",
+    va="center",
+)
+widget_axes.append(image_button_ax)
 widget_axes.append(animation_button_ax)
+widget_texts.append(image_status_text)
 
 sliders = {}
 sliders.update(
@@ -146,7 +177,9 @@ sliders.update(
     )
 )
 
-generate_button = Button(animation_button_ax, "Generate animation", color=ACCENT_COLOR, hovercolor=ACCENT_HOVER_COLOR)
+image_button = Button(image_button_ax, "Choose image", color=ACCENT_COLOR, hovercolor=ACCENT_HOVER_COLOR)
+image_button.label.set_color(BUTTON_TEXT_COLOR)
+generate_button = Button(animation_button_ax, "Generate", color=ACCENT_COLOR, hovercolor=ACCENT_HOVER_COLOR)
 generate_button.label.set_color(BUTTON_TEXT_COLOR)
 
 
@@ -303,10 +336,68 @@ def btn_video(_event):
         int(sliders["Duration"].val),
         fps=int(sliders["FPS"].val),
         ax_v=ax_video,
+        image_path=selected_image_path,
     )
     fig.canvas.draw_idle()
 
 
+def show_grayscale_image_preview(image_path):
+    width = 1500
+    height = 800
+    grayscale_values, alpha_values = load_grayscale_alpha_map(image_path, height, width)
+    preview_values = np.dstack((grayscale_values, grayscale_values, grayscale_values, alpha_values))
+    image_extent = get_centered_image_extent(
+        grayscale_values.shape[0],
+        grayscale_values.shape[1],
+        height,
+        width,
+    )
+
+    ax_video.clear()
+    ax_video.set_facecolor(BACKGROUND_COLOR)
+    ax_video.set_title("Black and white image preview", color=TEXT_COLOR, fontsize=13)
+    ax_video.imshow(
+        preview_values,
+        aspect="equal",
+        extent=image_extent,
+        origin="upper",
+        interpolation="nearest",
+    )
+    ax_video.set_xlim(0, width)
+    ax_video.set_ylim(0, height)
+    ax_video.axis("off")
+
+
+def btn_choose_image(_event):
+    global current_animation, selected_image_path
+
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    image_path = filedialog.askopenfilename(
+        parent=root,
+        title="Choose image mask",
+        filetypes=[
+            ("Image files", "*.png *.jpg *.jpeg *.bmp *.tif *.tiff"),
+            ("All files", "*.*"),
+        ],
+    )
+    root.destroy()
+
+    if not image_path:
+        return
+
+    selected_image_path = image_path
+    if current_animation is not None and current_animation.event_source is not None:
+        current_animation.event_source.stop()
+        current_animation = None
+
+    image_status_text.set_text(f"Image: {Path(image_path).name}")
+    show_grayscale_image_preview(image_path)
+    fig.canvas.draw_idle()
+
+
+image_button.on_clicked(btn_choose_image)
 generate_button.on_clicked(btn_video)
 for slider in sliders.values():
     slider.on_changed(update)
