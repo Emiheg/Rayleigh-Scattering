@@ -3,6 +3,7 @@
 Main script to run the atmospheric scattering simulation.
 This version keeps previews, controls, and generated animation in one window.
 """
+import copy
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog
@@ -56,6 +57,27 @@ ax_line_controls = axes["line_controls"]
 ax_animation_controls = axes["animation_controls"]
 ax_video = axes["video"]
 
+video_bbox = ax_video.get_position()
+video_button_height = video_bbox.height * 0.055
+video_button_gap = video_bbox.height * 0.018
+ax_video.set_position(
+    [
+        video_bbox.x0,
+        video_bbox.y0 + video_button_height + video_button_gap,
+        video_bbox.width,
+        video_bbox.height - video_button_height - video_button_gap,
+    ]
+)
+save_video_button_ax = fig.add_axes(
+    [
+        video_bbox.x0,
+        video_bbox.y0,
+        video_bbox.width,
+        video_button_height,
+    ],
+    zorder=20,
+)
+
 panel_axes = [
     ax_preview_before,
     ax_preview_after,
@@ -87,10 +109,12 @@ sun_after.outer_sun.set_zorder(6)
 color_canvas = ColorCanvas(ax_preview_before, ax_preview_after, ax_video, BACKGROUND_COLOR, TEXT_COLOR)
 ray_plots = []
 current_animation = None
+current_video_settings = None
 selected_image_path = None
 widget_axes = []
 widget_texts = []
 ax_animation_controls.set_facecolor(PANEL_COLOR)
+save_video_button_ax.set_facecolor(PANEL_COLOR)
 animation_bbox = ax_animation_controls.get_position()
 image_button_ax = fig.add_axes(
     [
@@ -121,6 +145,7 @@ image_status_text = fig.text(
 )
 widget_axes.append(image_button_ax)
 widget_axes.append(animation_button_ax)
+widget_axes.append(save_video_button_ax)
 widget_texts.append(image_status_text)
 
 sliders = {}
@@ -181,6 +206,8 @@ image_button = Button(image_button_ax, "Choose image", color=ACCENT_COLOR, hover
 image_button.label.set_color(BUTTON_TEXT_COLOR)
 generate_button = Button(animation_button_ax, "Generate", color=ACCENT_COLOR, hovercolor=ACCENT_HOVER_COLOR)
 generate_button.label.set_color(BUTTON_TEXT_COLOR)
+save_video_button = Button(save_video_button_ax, "Save video", color=ACCENT_COLOR, hovercolor=ACCENT_HOVER_COLOR)
+save_video_button.label.set_color(BUTTON_TEXT_COLOR)
 
 
 def get_blended_colors(sun_obj, enhancement, coefficient):
@@ -325,18 +352,27 @@ def update(_):
 
 
 def btn_video(_event):
-    global current_animation
+    global current_animation, current_video_settings
     if current_animation is not None and current_animation.event_source is not None:
         current_animation.event_source.stop()
+    current_video_settings = {
+        "enhancement": sliders["Enhancement"].val,
+        "coefficient": sliders["Density Falloff"].val,
+        "sun": copy.deepcopy(sun),
+        "rotation_deg": sliders["Rotation"].val,
+        "vid_length": int(sliders["Duration"].val),
+        "fps": int(sliders["FPS"].val),
+        "image_path": selected_image_path,
+    }
     current_animation = create_video(
-        sliders["Enhancement"].val,
-        sliders["Density Falloff"].val,
-        sun,
-        sliders["Rotation"].val,
-        int(sliders["Duration"].val),
-        fps=int(sliders["FPS"].val),
+        current_video_settings["enhancement"],
+        current_video_settings["coefficient"],
+        current_video_settings["sun"],
+        current_video_settings["rotation_deg"],
+        current_video_settings["vid_length"],
+        fps=current_video_settings["fps"],
         ax_v=ax_video,
-        image_path=selected_image_path,
+        image_path=current_video_settings["image_path"],
     )
     fig.canvas.draw_idle()
 
@@ -397,8 +433,66 @@ def btn_choose_image(_event):
     fig.canvas.draw_idle()
 
 
+def btn_save_video(_event):
+    if current_animation is None or current_video_settings is None:
+        ax_video.set_title("Generate an animation before saving", color=TEXT_COLOR, fontsize=13)
+        fig.canvas.draw_idle()
+        return
+
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    video_path = filedialog.asksaveasfilename(
+        parent=root,
+        title="Save generated animation",
+        defaultextension=".mp4",
+        filetypes=[
+            ("MP4 video", "*.mp4"),
+            ("GIF animation", "*.gif"),
+            ("All files", "*.*"),
+        ],
+    )
+    root.destroy()
+
+    if not video_path:
+        return
+
+    suffix = Path(video_path).suffix.lower()
+    writer = "pillow" if suffix == ".gif" else "ffmpeg"
+    save_fig = plt.figure(figsize=(15, 8), facecolor=BACKGROUND_COLOR)
+    save_ax = save_fig.add_axes([0, 0, 1, 1])
+    save_animation = create_video(
+        current_video_settings["enhancement"],
+        current_video_settings["coefficient"],
+        current_video_settings["sun"],
+        current_video_settings["rotation_deg"],
+        current_video_settings["vid_length"],
+        fps=current_video_settings["fps"],
+        ax_v=save_ax,
+        image_path=current_video_settings["image_path"],
+        show_title=False,
+    )
+    try:
+        save_animation.save(
+            video_path,
+            writer=writer,
+            fps=current_video_settings["fps"],
+            savefig_kwargs={"facecolor": BACKGROUND_COLOR},
+        )
+    except Exception as exc:
+        plt.close(save_fig)
+        ax_video.set_title(f"Save failed: {exc}", color=TEXT_COLOR, fontsize=13)
+        fig.canvas.draw_idle()
+        return
+
+    plt.close(save_fig)
+    ax_video.set_title(f"Saved: {Path(video_path).name}", color=TEXT_COLOR, fontsize=13)
+    fig.canvas.draw_idle()
+
+
 image_button.on_clicked(btn_choose_image)
 generate_button.on_clicked(btn_video)
+save_video_button.on_clicked(btn_save_video)
 for slider in sliders.values():
     slider.on_changed(update)
 

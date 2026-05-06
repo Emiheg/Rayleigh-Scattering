@@ -88,7 +88,17 @@ def replace_grayscale_with_colors(grayscale_values, colors, alpha_values=None):
     return image_data
 
 
-def create_video(enhancement, coefficient, sun_orig: SunClass.Sun, rotation_deg, vid_length, fps=30, ax_v=None, image_path=None):
+def create_video(
+    enhancement,
+    coefficient,
+    sun_orig: SunClass.Sun,
+    rotation_deg,
+    vid_length,
+    fps=30,
+    ax_v=None,
+    image_path=None,
+    show_title=True,
+):
     if ax_v is None:
         raise ValueError("create_video requires a target axis")
 
@@ -107,7 +117,8 @@ def create_video(enhancement, coefficient, sun_orig: SunClass.Sun, rotation_deg,
 
     ax_v.clear()
     ax_v.set_facecolor("#101418")
-    ax_v.set_title("Generated animation", color="#f0f0f0", fontsize=13)
+    if show_title:
+        ax_v.set_title("Generated animation", color="#f0f0f0", fontsize=13)
     ax_v.axis("off")
 
     fig_v = ax_v.figure
